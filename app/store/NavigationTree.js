@@ -69,34 +69,42 @@ Ext.define('WEB_BASE.store.NavigationTree', {
         expanded: true,
         children: [
             {
-                text: 'HSM Config',
+                text: 'Tin tức',
                 iconCls: 'x-fa fa-cogs',
-                viewType: 'Hsm_Config_View',
-                routeId: 'dashboard', // routeId defaults to viewType
+                viewType: 'Tin_tuc_View',
+                routeId: 'tin_tuc',
                 leaf: true,
                 index: 4
             },
             {
-                text: 'Bank API',
+                text: 'Cộng đồng',
                 iconCls: 'x-fa fa-home',
-                viewType: 'Bank_API_View',
-                routeId: 'bank_api', // routeId defaults to viewType
+                viewType: 'Cong_dong_View',
+                routeId: 'cong_dong',
                 leaf: true,
                 index: 3
             },
             {
-                text: 'Authen Client',
+                text: 'Hồ sơ',
                 iconCls: 'x-fa fa-user-shield',
-                viewType: 'Authen_Client_View',
-                routeId: 'authen_client', // routeId defaults to viewType
-                leaf: true,
-                index: 2
+                viewType: 'Hoso_View',
+                routeId: 'hoso',
+                index: 2,
+                children: [
+                    {
+                        text: 'Hồ sơ',
+                        iconCls: 'x-fa fa-user-shield',
+                        viewType: 'Ho_so_View',
+                        routeId: 'ho_so',
+                        leaf: true
+                    }
+                ]
             },
             {
-                text: 'TXN Record',
+                text: 'Công việc',
                 iconCls: 'x-fa fa-bars',
-                viewType: 'TXN_Record_View',
-                routeId: 'txn_record', // routeId defaults to viewType
+                viewType: 'Cong_viec_View',
+                routeId: 'cong_viec',
                 leaf: true,
                 index: 1
             }

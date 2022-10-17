@@ -1,11 +1,11 @@
-Ext.define('WEB_BASE.view.main.MainController', {
+Ext.define('WEB_BASE.view.Hoso.Hoso_ViewController', {
     extend: 'Ext.app.ViewController',
-    alias: 'controller.main',
+    alias: 'controller.Hoso_ViewController',
 
     listen: {
         controller: {
             '#': {
-                unmatchedroute: 'onUnMathRouter'
+                unmatchedroute: 'onRouteChange'
             }
         }
     },
@@ -14,98 +14,89 @@ Ext.define('WEB_BASE.view.main.MainController', {
         ':node/:id(/:args)?': 'onRouteDataChange'
     },
     control: {
+        '#navigationTreeList': {
+            selectionchange: 'onNavigationTreeSelectionChange'
+        }
     },
     lastView: null,
     init: function (view) {
         var viewmodel = this.getViewModel();
-        var me = this,
-            refs = me.getReferences();
-        //console.log(view);
-        me.callParent([view]);
+        var data = WEB_BASE.util.State.get('session');
+        var session = data ? WEB_BASE.model.Session.loadData(data) : null;
+        viewmodel.set('avatar', session.get('avatar'));
 
-        var session = WEB_BASE.util.State.get('session');
-        viewmodel.set('fullname', session.fname);
-
-        me.nav = refs.navigation;
-
+        var tbname = this.lookup('tbname');
+        // var tbavatar = this.lookup('tbavatar');
+        tbname.text = config.getFname();
+        // tbavatar.src = config.getAvatar();
         if ('' == window.location.hash) {
-            me.redirectTo('mobilemenu');
+            this.redirectTo('dashboard');
         } else {
             var hash = window.location.hash.substring(1);
             console.log(' hash view: ', hash);
             var listhast = hash.split('/');
             if (listhast.length > 1)
-                me.onRouteDataChange(listhast[0], listhast[1], listhast[2]);
+                this.onRouteDataChange(listhast[0], listhast[1], listhast[2]);
             else
-                me.onRouteChange(hash);
+                this.onRouteChange(hash);
         }
 
-    },
-    onUnMathRouter: function () {
-        this.redirectTo('mobilemenu');
     },
     beforeRender: function () {
         // var tbname = this.lookup('tbname');
         // tbname.text = config.getFname();
         // console.log('beforeRender - location hash: ', window.location.hash);
-        var hash = window.location.hash.substring(1);
-        console.log(' hash view: ', hash);
-        this.setCurrentView(hash);
+        // var hash = window.location.hash.substring(1);
+        // console.log(' hash view: ', hash);
+        // this.setCurrentView(hash);
     },
     setCurrentView: function (hashTag) {
-        console.log('setCurrentView:' + hashTag);
+        if (null != WEB_BASE.Utils.porderTaskRunner) {
+            WEB_BASE.Utils.porderTaskRunner.destroy();
+        }
         hashTag = (hashTag || '').toLowerCase();
-
+        var session = WEB_BASE.util.State.get('session');
+        /* if(!session){
+             this.redirectTo("login");
+        } */
         var me = this,
             refs = me.getReferences(),
-            mainCard = refs.mainCardPanel;
+            mainCard = refs.mainCardPanel,
+            mainLayout = mainCard.getLayout(),
+            navigationList = refs.navigationTreeList,
+            store = navigationList.getStore();
 
-        var activeItem = mainCard.getActiveItem();
-        var store = Ext.getStore('NavigationTree');
-        var node = store.findNode('routeId', hashTag);  // console.log(node);
-        var xtype = '';
+        var node = store.findNode('routeId', hashTag) || store.findNode('viewType', hashTag);
+        var view = (node && node.get('viewType')) || 'page404';
 
+        //Hien thong tin menu dc chon
         if (node) {
-            xtype = node.get('viewType');
+            var viewmodel = this.getViewModel();
+            if (null != node.data.parent_name)
+                viewmodel.set('selected_menu', node.data.parent_name + ' -> ' + node.data.text);
+            else
+                viewmodel.set('selected_menu', node.data.text);
         }
 
-        if (hashTag == 'mobilemenu') {
-            xtype = 'TabMenuView';
+        if (mainLayout.getActiveItem()) {
+            mainLayout.getActiveItem().destroy();
         }
 
-        if (xtype == '' || xtype == null) {
-            this.redirectTo('mobilemenu');
-        }
-        else {
-            if (activeItem) {
-                activeItem.destroy();
-            }
-            var item = mainCard.child('component[routeId=' + hashTag + ']');
-            if (!item) {
-                //check truong hop chuyen url ma chua co view thi tu dong chuyen ve menu chinh
-                try {
-                    item = mainCard.push({
-                        xtype: xtype,
-                        routeId: hashTag
-                    });
+        newView = Ext.create({
+            xtype: view,
+            routeId: hashTag,  // for existingItem search later
+            hideMode: 'offsets'
+        });
 
-                    activeItem = mainCard.getActiveItem();
-                    if (activeItem.xtype == 'TabMenuView') {
-                        Ext.getCmp('maintoolbar').setHidden(false);
-                    } else {
-                        Ext.getCmp('maintoolbar').setHidden(true);
-                        mainCard.setHeight('100vh');
-                    }
-                }
-                catch (err) {
-                    console.log(err);
-                    Ext.Msg.alert('Thông báo', 'Chức năng đang phát triển! Bạn vui lòng quay lại sau!', function () {
-                        me.redirectTo('mobilemenu');
-                    });
-                }
-            }
-        }
+        //console.log(newView);
+        mainLayout.setActiveItem(mainCard.add(newView));
 
+        me.fireEvent('urlBack', node);
+        navigationList.setSelection(node);
+
+        if (newView.isFocusable(true)) {
+            newView.focus();
+        }
     },
 
     onNavigationTreeSelectionChange: function (tree, node) {
@@ -122,10 +113,10 @@ Ext.define('WEB_BASE.view.main.MainController', {
         var me = this,
             refs = me.getReferences(),
             navigationList = refs.navigationTreeList,
-            west = refs.westContainer,
+            north = refs.northContainer,
             center = refs.mainCardPanel,
             collapsing = !navigationList.getMicro(),
-            new_width = collapsing ? 64 : 250;
+            new_width = collapsing ? 40 : 250;
 
         if (Ext.isIE9m || !Ext.os.is.Desktop) {
             Ext.suspendLayouts();
@@ -151,9 +142,9 @@ Ext.define('WEB_BASE.view.main.MainController', {
             // as the root layout (it and its chidren). This will cause the adjusted size to
             // be flushed to the element and animate to that new size.
             navigationList.width = new_width;
-            west.setWidth(new_width);
+            north.setWidth(new_width);
             center.setWidth(center.width + 250 - new_width);
-            west.updateLayout();
+            north.updateLayout();
             center.updateLayout();
             // navigationList.el.addCls('nav-tree-animating');
 
@@ -175,18 +166,15 @@ Ext.define('WEB_BASE.view.main.MainController', {
 
     onMainViewRender: function () {
         if (!window.location.hash) {
-            this.redirectTo("tin_tuc");
+            this.redirectTo("dashboard");
         }
     },
-
 
     onRouteChange: function (id) {
         console.log('onRouteChange:' + id);
         this.setCurrentView(id);
     },
     onRouteDataChange(hashTag, id, args) {
-        console.log('onRouteDataChange: ' + hashTag + ' ' + id + ' ' + args);
-
         args = Ext.Array.clean((args || '').split('/'));
         hashTag = (hashTag || '').toLowerCase();
         var session = WEB_BASE.util.State.get('session');
@@ -195,62 +183,35 @@ Ext.define('WEB_BASE.view.main.MainController', {
         }
         var me = this,
             refs = me.getReferences(),
-            mainCard = refs.mainCardPanel;
+            mainCard = refs.mainCardPanel,
+            mainLayout = mainCard.getLayout(),
+            navigationList = refs.navigationTreeList,
+            store = navigationList.getStore(),
+            node = store.findNode('routeId', hashTag) || store.findNode('viewType', hashTag);
 
-        var activeItem = mainCard.getActiveItem();
-        var store = Ext.getStore('NavigationTree');
-        var node = store.findNode('routeId', hashTag) || store.findNode('viewType', hashTag);
-        var xtype_edit = '';
+        var xtype_edit = (node && node.get('xtype_edit')) || 'page404';
 
-        // console.log('args: ' + args);
-
-        if (node) {
-            if (args == 'edit') {
-                xtype_edit = node.get('xtype_edit');
-            } else if (args == 'edit_detail') {
-                xtype_edit = node.get('xtype_edit_detail');
-            }
-
+        // if (mainLayout.getActiveItem() && mainLayout.getActiveItem().xtype == xtype_edit){
+        //     mainLayout.getActiveItem().destroy();
+        // }
+        if (mainLayout.getActiveItem()) {
+            mainLayout.getActiveItem().destroy();
         }
-        if (xtype_edit == '' || xtype_edit == null) {
-            this.redirectTo('mobilemenu');
-        }
-        else {
-            if (activeItem) {
-                activeItem.destroy();
-            }
-            var item = mainCard.child('component[routeId=' + xtype_edit + ']');
-            if (!item) {
-                try {
-                    if (args.toString().includes('edit')) {
-                        item = mainCard.push({
-                            xtype: xtype_edit,
-                            routeId: xtype_edit
-                        });
-                        me.fireEvent('loaddata', id, args);
-                    } else {
-                        item = mainCard.push({
-                            xtype: xtype_edit,
-                            routeId: xtype_edit
-                        });
-                        me.fireEvent('newdata', node, id);
-                    }
-
-                    activeItem = mainCard.getActiveItem();
-                    if (activeItem.xtype == 'MobileMenu') {
-                        Ext.getCmp('maintoolbar').setHidden(false);
-                    } else {
-                        Ext.getCmp('maintoolbar').setHidden(true);
-                        Ext.getCmp('mainCardPanel').setHeight('100vh');
-                    }
-                }
-                catch (err) {
-                    console.log(err);
-                    Ext.Msg.alert('Thông báo', 'Chức năng đang phát triển! Bạn vui lòng quay lại sau!', function () {
-                        me.redirectTo('mobilemenu');
-                    });
-                }
-            }
+        console.log(xtype_edit);
+        if (args.toString().includes('edit')) {
+            item = mainCard.add({
+                xtype: xtype_edit,
+                routeId: xtype_edit
+            });
+            mainLayout.setActiveItem(item);
+            me.fireEvent('loaddata', id, args);
+        } else {
+            item = mainCard.add({
+                xtype: xtype_edit,
+                routeId: xtype_edit
+            });
+            mainLayout.setActiveItem(item);
+            me.fireEvent('newdata', node);
         }
     },
     onSearchRouteChange: function () {
@@ -275,11 +236,31 @@ Ext.define('WEB_BASE.view.main.MainController', {
             window.location.search = ('?modern&' + s).replace(/&$/, '');
         }
     },
+
+    onEmailRouteChange: function () {
+        this.setCurrentView('email');
+    },
     closeSession: function () {
         config.setToken(null);
         WEB_BASE.util.State.set('session', null);
-        this.getView().destroy();
-        Ext.create('WEB_BASE.view.login.Login', { fullscreen: true });
+
+        if (Ext.os.deviceType === 'Phone' || Ext.os.deviceType === 'Tablet') {
+            this.getView().destroy();
+            Ext.create('WEB_BASE.view.login.Login', { fullscreen: true });
+        } else {
+            // window.location.reload();
+            //var appMain = Ext.getCmp('app-main');//this.getComponent('app-main');
+            //var view = this.getView();
+            //console.log(appMain);
+
+            //Ext.Msg.alert('Warning', 'Network is slow ..');
+            //this.getView().destroy();
+            //Ext.Msg.alert('Warning', 'Network is slow ..');
+            this.getView().destroy();
+            Ext.create({
+                xtype: 'xlogin'
+            });
+        }
     },
     onInfo: function (e) {
         var menu_grid = new Ext.menu.Menu({
@@ -293,42 +274,7 @@ Ext.define('WEB_BASE.view.main.MainController', {
         e.stopEvent();
         menu_grid.showAt(e.getXY());
     },
-    onChangePass: function () {
-        var me = this;
-        var data = WEB_BASE.util.State.get('session');
-        var session = data ? WEB_BASE.model.Session.loadData(data) : null;
-
-        var form = Ext.create('Ext.window.Window', {
-            height: 200,
-            closable: true,
-            title: 'Thay đổi mật khẩu',
-            resizable: false,
-            modal: true,
-            border: false,
-            closeAction: 'destroy',
-            width: 300,
-            bodyStyle: 'background-color: transparent',
-            layout: {
-                type: 'fit', // fit screen for window
-                padding: 5
-            },
-            items: [{
-                xtype: 'ChangePass',
-                viewModel: {
-                    data: {
-                        userid: session.get('id'),
-                        username: session.get('username')
-                    }
-                }
-            }]
-        });
-        form.show();
-
-        form.down('#ChangePass').on('Success', function () {
-            form.close();
-            me.onLogout();
-        })
-    },
+    
     onLogout: function () {
         // config.setToken(null);
         // WEB_BASE.util.State.set('session', null);
@@ -359,5 +305,41 @@ Ext.define('WEB_BASE.view.main.MainController', {
                 console.log('Test finished');
             }
         });*/
-    }
+    },
+    onTest: function () {
+        Ext.Ajax.request({
+            url: 'http://localhost:8990/gsmartcore/api/v1/test/user',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'authorization': config.getToken()
+            },
+            callback: function () {
+                console.log('Test finished');
+            }
+        });
+    },
+    onFullScreen: function () {
+        document.body[this.getFullscreenFn()](Element.ALLOW_KEYBOARD_INPUT);
+    },
+    getFullscreenFn: function () {
+        var docElm = document.documentElement,
+            fn;
+
+        if (docElm.requestFullscreen) {
+            fn = "requestFullscreen";
+        }
+        else if (docElm.mozRequestFullScreen) {
+            fn = "mozRequestFullScreen";
+        }
+        else if (docElm.webkitRequestFullScreen) {
+            fn = "webkitRequestFullScreen";
+        }
+        else if (docElm.msRequestFullscreen) {
+            fn = "msRequestFullscreen";
+        }
+
+        return fn;
+    },
 });

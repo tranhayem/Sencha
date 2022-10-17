@@ -12,7 +12,7 @@ Ext.define('WEB_BASE.Application', {
         'WEB_BASE.model.Session',
         'WEB_BASE.view.*'
     ],
-    //defaultToken : 'dashboard',
+    //defaultToken : 'tin_tuc',
 
     //mainView: 'WEB_BASE.view.main.Main',
 

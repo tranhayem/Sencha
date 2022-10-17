@@ -31,7 +31,7 @@ Ext.define('WEB_BASE.view.pages.Error404Window', {
                 {
                     xtype: 'label',
                     cls: 'error-page-desc',
-                    html: '<div>Bạn không được quyền truy cập trang này!</div><div>Ấn vào <a href="#dashboard">đây</a> để quay về trang chủ.</div>'
+                    html: '<div>Bạn không được quyền truy cập trang này!</div><div>Ấn vào <a href="#tin_tuc">đây</a> để quay về trang chủ.</div>'
                 },
                 {
                     xtype: 'tbspacer',
